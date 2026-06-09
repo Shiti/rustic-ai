@@ -10,14 +10,13 @@ This agent connects to an MCP server and exposes its tools as callable functions
 
 The `MCPAgent` is configured using `MCPAgentConfig`, which specifies connection details for an MCP server.
 
-### STDIO Configuration (Most Common)
+### STDIO Configuration
 
 For MCP servers that run as child processes:
 
 ```python
 {
     "server": {
-        "name": "notion",
         "type": "stdio",
         "command": "npx",
         "args": ["-y", "@notionhq/notion-mcp-server"],
@@ -28,22 +27,22 @@ For MCP servers that run as child processes:
 }
 ```
 
-### SSE Configuration
+### HTTP Configuration
 
-For remote MCP servers that use Server-Sent Events:
+For remote MCP servers that speak the Streamable HTTP transport:
 
 ```python
 {
     "server": {
-        "name": "remote_server",
-        "type": "sse",
-        "url": "https://example.com/mcp",
-        "headers": {
-            "Authorization": "Bearer your_token"
-        }
+        "type": "http",
+        "url": "https://example.com/mcp"
     }
 }
 ```
+
+If the remote server requires bearer auth, set the `MCP_TOKEN` environment
+variable on the process running the agent. The client will send it as
+`Authorization: Bearer <MCP_TOKEN>` on every request.
 
 ## Message Types
 
@@ -55,7 +54,6 @@ A request to call a tool on the MCP server.
 
 ```python
 class CallToolRequest(BaseModel):
-    server_name: str  # Must match the server name in configuration
     tool_name: str    # Name of the tool to call
     arguments: Dict = {}  # Arguments to pass to the tool
 ```
@@ -63,7 +61,6 @@ class CallToolRequest(BaseModel):
 **Example:**
 ```python
 CallToolRequest(
-    server_name="notion",
     tool_name="API-post-page",
     arguments={
         "parent": {"page_id": "abc-123"},
@@ -134,7 +131,6 @@ notion_agent_spec = {
     "class_name": "rustic_ai.mcp.agent.MCPAgent",
     "properties": {
         "server": {
-            "name": "notion",
             "type": "stdio",
             "command": "npx",
             "args": ["-y", "@notionhq/notion-mcp-server"],
@@ -156,7 +152,6 @@ from rustic_ai.mcp.models import CallToolRequest
 
 # Create a tool call request
 request = CallToolRequest(
-    server_name="notion",
     tool_name="API-post-search",
     arguments={"query": "my workspace"}
 )
@@ -176,7 +171,6 @@ notion_agent = {
     "class_name": "rustic_ai.mcp.agent.MCPAgent",
     "properties": {
         "server": {
-            "name": "notion",
             "type": "stdio",
             "command": "npx",
             "args": ["-y", "@notionhq/notion-mcp-server"],
@@ -191,7 +185,6 @@ playwright_agent = {
     "class_name": "rustic_ai.mcp.agent.MCPAgent",
     "properties": {
         "server": {
-            "name": "playwright",
             "type": "stdio",
             "command": "npx",
             "args": ["-y", "@playwright/mcp@latest"],
@@ -218,7 +211,7 @@ orchestrator_spec = {
         "default_system_prompt": """
 You analyze user requests and determine which MCP service to call.
 Return JSON with:
-- server_name: "notion" or "playwright"
+- target: "notion" or "playwright" (used to route to the right MCP agent's topic)
 - tool_name: the specific tool to call
 - arguments: tool parameters
 """
@@ -298,18 +291,29 @@ You can build custom MCP servers using the MCP SDK and connect them via the MCPA
 
 ### Debugging
 
-Enable detailed logging to troubleshoot MCP connections:
+The `MCPClient` logs through the owning agent's logger, so MCP connection
+output appears under the per-agent logger name
+(`Agent[<agent-name>:<agent-id>]`) rather than `rustic_ai.mcp`. To enable
+detailed logging for a specific agent:
 
 ```python
 import logging
-logging.getLogger("rustic_ai.mcp").setLevel(logging.DEBUG)
+logging.getLogger("Agent[Notion Agent:notion_mcp_agent]").setLevel(logging.DEBUG)
+```
+
+To enable debug logging for every agent in the process, raise the root
+logger level instead:
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
 ```
 
 ## Notes and Limitations
 
 - Each `MCPAgent` connects to exactly one MCP server
 - STDIO servers run as child processes and are terminated when the agent shuts down
-- SSE servers must be running independently before the agent starts
+- HTTP (Streamable HTTP) servers must be running independently before the agent starts
 - Tool schemas are defined by the MCP server, not the agent
 - Large responses may impact performance; consider streaming for large data
 

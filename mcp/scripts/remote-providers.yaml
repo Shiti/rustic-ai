@@ -1,0 +1,31 @@
+providers:
+  - name: alltrails
+    url: https://www.alltrails.com/mcp
+
+  - name: peek
+    url: https://mcp.peek.com
+
+  - name: godaddy
+    url: https://api.godaddy.com/v1/domains/mcp
+
+  #  google - https://docs.cloud.google.com/mcp/supported-products
+  - name: google-calendar
+    url: https://calendarmcp.googleapis.com/mcp/v1
+
+  - name: google-maps
+    url: https://mapstools.googleapis.com/mcp
+
+  - name: google-datacommons
+    url: https://api.datacommons.org/mcp
+
+  - name: atlassian-rovo
+    url: https://mcp.atlassian.com/v1/mcp/authv2
+    token_env_var: ROVO_API_TOKEN
+
+  - name: datacommons
+    url: https://api.datacommons.org/mcp
+    token_env_var: DC_API_KEY
+    token_header: X-API-Key
+
+
+
